@@ -62,7 +62,14 @@ export const translations = {
     rainWarningTitle: "Rain Expected Soon",
     rainWarningDesc: "Significant rain is forecast in the next 24 hours. Consider postponing irrigation to avoid water wastage and root rot.",
     postponeAction: "Postpone Irrigation",
-    checkingWeather: "Checking upcoming weather..."
+    checkingWeather: "Checking upcoming weather...",
+    villageFeed: "Village & Community Wire",
+    localNews: "Nearby News & Incidents",
+    communityReported: "Community Reported",
+    viewSource: "View Source",
+    incident: "Incident",
+    news: "News",
+    loadingNews: "Connecting to local community feeds..."
   },
   hi: {
     dashboard: "डैशबोर्ड",
@@ -126,7 +133,14 @@ export const translations = {
     rainWarningTitle: "जल्द ही बारिश की संभावना",
     rainWarningDesc: "अगले 24 घंटों में भारी बारिश का अनुमान है। पानी की बर्बादी और जड़ सड़न से बचने के लिए सिंचाई टालने पर विचार करें।",
     postponeAction: "सिंचाई स्थगित करें",
-    checkingWeather: "आगामी मौसम की जाँच की जा रही है..."
+    checkingWeather: "आगामी मौसम की जाँच की जा रही है...",
+    villageFeed: "गाँव और समुदाय फ़ीड",
+    localNews: "आस-पास के समाचार और घटनाएँ",
+    communityReported: "समुदाय द्वारा रिपोर्ट किया गया",
+    viewSource: "स्रोत देखें",
+    incident: "घटना",
+    news: "समाचार",
+    loadingNews: "स्थानीय सामुदायिक फीड से जुड़ रहे हैं..."
   },
   pa: {
     dashboard: "ਡੈਸ਼ਬੋਰਡ",
@@ -190,7 +204,14 @@ export const translations = {
     rainWarningTitle: "ਜਲਦੀ ਹੀ ਮੀਂਹ ਪੈਣ ਦੀ ਸੰਭਾਵਨਾ",
     rainWarningDesc: "ਅਗਲੇ 24 ਘੰਟਿਆਂ ਵਿੱਚ ਭਾਰੀ ਮੀਂਹ ਦੀ ਭਵਿੱਖਬਾਣੀ ਕੀਤੀ ਗਈ ਹੈ। ਪਾਣੀ ਦੀ ਬਰਬਾਦੀ ਤੋਂ ਬਚਣ ਲਈ ਸਿੰਚਾਈ ਨੂੰ ਟਾਲਣ ਬਾਰੇ ਵਿਚਾਰ ਕਰੋ।",
     postponeAction: "ਸਿੰਚਾਈ ਮੁਲਤਵੀ ਕਰੋ",
-    checkingWeather: "ਆਉਣ ਵਾਲੇ ਮੌਸਮ ਦੀ ਜਾਂਚ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ..."
+    checkingWeather: "ਆਉਣ ਵਾਲੇ ਮੌਸਮ ਦੀ ਜਾਂਚ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ...",
+    villageFeed: "ਪਿੰਡ ਅਤੇ ਕਮਿਊਨਿਟੀ ਫੀਡ",
+    localNews: "ਨੇੜਲੇ ਖ਼ਬਰਾਂ ਅਤੇ ਘਟਨਾਵਾਂ",
+    communityReported: "ਕਮਿਊਨਿਟੀ ਦੁਆਰਾ ਰਿਪੋਰਟ ਕੀਤੀ ਗਈ",
+    viewSource: "ਸਰੋਤ ਦੇਖੋ",
+    incident: "ਘਟਨਾ",
+    news: "ਖ਼ਬਰਾਂ",
+    loadingNews: "ਸਥਾਨਕ ਕਮਿਊਨਿਟੀ ਫੀਡ ਨਾਲ ਜੁੜ ਰਿਹਾ ਹੈ..."
   },
   mr: {
     dashboard: "डॅशबोर्ड",
@@ -254,7 +275,14 @@ export const translations = {
     rainWarningTitle: "लवकरच पावसाची शक्यता",
     rainWarningDesc: "पुढील २४ तासांत मोठ्या पावसाचा अंदाज आहे. पाण्याचा अपव्यय टाळण्यासाठी सिंचन पुढे ढकलण्याचा विचार करा.",
     postponeAction: "सिंचन पुढे ढकला",
-    checkingWeather: "येणाऱ्या हवामानाची तपासणी करत आहे..."
+    checkingWeather: "येणाऱ्या हवामानाची तपासणी करत आहे...",
+    villageFeed: "गाव आणि समुदाय फीड",
+    localNews: "जवळपासच्या बातम्या आणि घटना",
+    communityReported: "समुदायाने नोंदवलेले",
+    viewSource: "स्रोत पहा",
+    incident: "घटना",
+    news: "बातम्या",
+    loadingNews: "स्थानिक समुदाय फीडशी कनेक्ट होत आहे..."
   }
 };
 

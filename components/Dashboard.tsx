@@ -1,17 +1,20 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Cloud, Droplets, Thermometer, TrendingUp, AlertCircle, ArrowRight, Sparkles, Loader2, FlaskConical, Sprout, Camera, Waves } from 'lucide-react';
+import { Cloud, Droplets, Thermometer, TrendingUp, AlertCircle, ArrowRight, Sparkles, Loader2, FlaskConical, Sprout, Camera, Waves, Newspaper, ShieldAlert, Users, ExternalLink, Calendar, MapPin, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { geminiService } from '../services/geminiService';
 import { useUser } from '../App';
 import { getTranslation } from '../translations';
-import { FarmProfile } from '../types';
+import { FarmProfile, LocalNewsItem } from '../types';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useUser();
   const [aiAlerts, setAiAlerts] = useState<any[]>([]);
+  const [localNews, setLocalNews] = useState<LocalNewsItem[]>([]);
+  const [weatherAlerts, setWeatherAlerts] = useState<any[]>([]);
   const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
+  const [isLoadingNews, setIsLoadingNews] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [realStats, setRealStats] = useState({
     temp: '...',
@@ -25,6 +28,7 @@ export const Dashboard: React.FC = () => {
     if (user) {
       fetchAlerts(user);
       fetchLiveWeatherForStats(user);
+      fetchLocalIntelligence(user);
     }
   }, [user?.language, user?.location]);
 
@@ -40,6 +44,22 @@ export const Dashboard: React.FC = () => {
       }
     } catch (e: any) {
       console.error("Stats fetch failed", e);
+    }
+  };
+
+  const fetchLocalIntelligence = async (prof: FarmProfile) => {
+    setIsLoadingNews(true);
+    try {
+      const [news, wAlerts] = await Promise.all([
+        geminiService.getLocalNewsAndIncidents(prof.location, prof.language),
+        geminiService.getWeatherAlerts(prof.location, prof.language)
+      ]);
+      setLocalNews(news);
+      setWeatherAlerts(wAlerts);
+    } catch (e: any) {
+      console.error("Local intelligence fetch failed", e);
+    } finally {
+      setIsLoadingNews(false);
     }
   };
 
@@ -110,6 +130,19 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
+      {/* Severe Weather Alert Ribbon */}
+      {weatherAlerts.some(a => a.severity === 'High') && (
+        <div className="bg-red-600 p-4 rounded-3xl text-white flex items-center justify-between shadow-2xl animate-pulse">
+           <div className="flex items-center gap-3">
+             <AlertTriangle className="w-6 h-6" />
+             <span className="font-black text-sm uppercase tracking-widest">{t.weatherAlerts}: {weatherAlerts.find(a => a.severity === 'High')?.title}</span>
+           </div>
+           <Link to="/weather" className="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-xl text-xs font-black transition-all">
+             View Details
+           </Link>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-[2rem] border border-gray-50 shadow-xl shadow-gray-100 hover:shadow-2xl transition-all hover:-translate-y-1">
@@ -165,26 +198,55 @@ export const Dashboard: React.FC = () => {
             <TrendingUp className="absolute -bottom-10 -right-10 w-64 h-64 text-white/10" />
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100">
+          {/* New: Village Feed Section */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100 overflow-hidden relative">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="font-black text-xl text-gray-900">{t.growthProgress}</h3>
-              <Link to="/growth" className="text-green-600 text-sm font-black uppercase tracking-widest hover:underline">{t.viewFullHistory}</Link>
+              <h3 className="font-black text-xl text-gray-900 flex items-center gap-3">
+                <Users className="w-6 h-6 text-indigo-600" /> {t.villageFeed}
+              </h3>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Updates</p>
             </div>
-            <div className="space-y-5">
-              <div className="flex items-center gap-5 p-5 rounded-3xl bg-gray-50 border border-gray-100 hover:border-green-200 transition-all">
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm">
-                  <Sprout className="w-8 h-8 text-green-500" />
-                </div>
-                <div>
-                  <p className="font-black text-gray-900">{t.wheatPlotA}</p>
-                  <p className="text-sm text-gray-500 font-medium">{t.nextStageBooting}</p>
-                </div>
-                <div className="ml-auto text-right">
-                  <p className="text-xl font-black text-green-600">82%</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{t.healthy}</p>
-                </div>
+            {isLoadingNews ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                <p className="text-sm font-bold text-gray-400">{t.loadingNews}</p>
               </div>
-            </div>
+            ) : localNews.length > 0 ? (
+              <div className="grid gap-6">
+                {localNews.map((item, idx) => (
+                  <div key={idx} className="group bg-gray-50/50 hover:bg-white hover:shadow-xl hover:border-indigo-100 p-5 rounded-3xl border border-transparent transition-all animate-in fade-in slide-in-from-bottom-2">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        {item.type === 'incident' ? (
+                          <div className="p-2 bg-red-100 text-red-600 rounded-xl"><ShieldAlert className="w-4 h-4" /></div>
+                        ) : (
+                          <div className="p-2 bg-blue-100 text-blue-600 rounded-xl"><Newspaper className="w-4 h-4" /></div>
+                        )}
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none mb-1">
+                            {item.type === 'incident' ? t.incident : t.news} • {item.date || 'Today'}
+                          </p>
+                          <h4 className="font-black text-gray-900 group-hover:text-indigo-600 transition-colors">{item.title}</h4>
+                        </div>
+                      </div>
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white rounded-xl shadow-sm hover:text-indigo-600 transition-colors">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 font-medium leading-relaxed mb-3">{item.summary}</p>
+                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase">
+                      <MapPin className="w-3 h-3" /> {user?.location} • <span className="text-indigo-600">{item.source || t.communityReported}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                <p className="text-gray-400 font-bold">No recent community incidents reported in this area.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -194,14 +256,25 @@ export const Dashboard: React.FC = () => {
               <AlertCircle className="w-6 h-6 text-red-500" /> {t.riskMonitor}
             </h3>
             <div className="space-y-4">
-              <div className="p-5 bg-red-50 rounded-3xl border border-red-100 shadow-sm shadow-red-50">
-                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">{t.localPestWarning}</p>
-                <p className="text-sm text-red-900 font-bold leading-tight">{t.locustDesc}</p>
-              </div>
-              <div className="p-5 bg-orange-50 rounded-3xl border border-orange-100 shadow-sm shadow-orange-50">
-                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">{t.irrigationSchedule}</p>
-                <p className="text-sm text-orange-900 font-bold leading-tight">{t.soilMoistureLowDesc}</p>
-              </div>
+              {weatherAlerts.slice(0, 2).map((alert, i) => (
+                <div key={i} className={`p-5 rounded-3xl border shadow-sm ${alert.severity === 'High' ? 'bg-red-50 border-red-100 text-red-900' : 'bg-orange-50 border-orange-100 text-orange-900'}`}>
+                  <p className="text-[10px] font-black uppercase tracking-widest mb-1">{alert.severity} Weather Priority</p>
+                  <p className="text-sm font-bold leading-tight">{alert.title}</p>
+                  <p className="text-[10px] mt-2 opacity-70">{alert.action}</p>
+                </div>
+              ))}
+              {weatherAlerts.length === 0 && (
+                <>
+                  <div className="p-5 bg-red-50 rounded-3xl border border-red-100 shadow-sm shadow-red-50">
+                    <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">{t.localPestWarning}</p>
+                    <p className="text-sm text-red-900 font-bold leading-tight">{t.locustDesc}</p>
+                  </div>
+                  <div className="p-5 bg-orange-50 rounded-3xl border border-orange-100 shadow-sm shadow-orange-50">
+                    <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">{t.irrigationSchedule}</p>
+                    <p className="text-sm text-orange-900 font-bold leading-tight">{t.soilMoistureLowDesc}</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

@@ -43,3 +43,12 @@ export interface Scheme {
   benefits: string;
   category: 'subsidy' | 'insurance' | 'finance';
 }
+
+export interface LocalNewsItem {
+  title: string;
+  summary: string;
+  source: string;
+  url: string;
+  date: string;
+  type: 'news' | 'incident' | 'alert';
+}

@@ -1,10 +1,11 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { ChatMessage, FarmProfile, FertilizerAdvice } from "../types";
+import { ChatMessage, FarmProfile, FertilizerAdvice, LocalNewsItem } from "../types";
 
 const CACHE_PREFIX = 'ruralassist_cache_';
 const WEATHER_CACHE_TIME = 15 * 60 * 1000; // 15 mins
 const ALERTS_CACHE_TIME = 30 * 60 * 1000; // 30 mins
+const NEWS_CACHE_TIME = 60 * 60 * 1000; // 1 hour
 
 export class GeminiService {
   private getAI() {
@@ -163,6 +164,43 @@ export class GeminiService {
     const jsonStr = text.startsWith('```') ? text.replace(/^```json\n?/, '').replace(/\n?```$/, '') : text;
     const data = JSON.parse(jsonStr);
     this.setCache(cacheKey, data, WEATHER_CACHE_TIME);
+    return data;
+  }
+
+  async getLocalNewsAndIncidents(location: string, lang: string = 'en'): Promise<LocalNewsItem[]> {
+    const cacheKey = `local_news_${location}_${lang}`;
+    const cached = this.getCached<LocalNewsItem[]>(cacheKey);
+    if (cached) return cached;
+
+    const ai = this.getAI();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Search for the latest farming news, local agricultural incidents, market arrivals, crop thefts, or pest reports in or near ${location}. Focus on news from the last 30 days. Respond in ${lang} and return as a JSON array.`,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              summary: { type: Type.STRING },
+              source: { type: Type.STRING },
+              url: { type: Type.STRING },
+              date: { type: Type.STRING },
+              type: { type: Type.STRING, description: "Must be 'news', 'incident', or 'alert'" }
+            },
+            required: ["title", "summary"]
+          }
+        }
+      }
+    });
+
+    const text = (response.text || '[]').trim();
+    const jsonStr = text.startsWith('```') ? text.replace(/^```json\n?/, '').replace(/\n?```$/, '') : text;
+    const data = JSON.parse(jsonStr);
+    this.setCache(cacheKey, data, NEWS_CACHE_TIME);
     return data;
   }
 
