@@ -52,3 +52,14 @@ export interface LocalNewsItem {
   date: string;
   type: 'news' | 'incident' | 'alert';
 }
+
+export interface MarketPrice {
+  cropName: string;
+  buyPrice: string; // Price to buy (seeds/inputs)
+  sellPrice: string; // Price to sell (mandi rate)
+  unit: string;
+  marketName: string;
+  trend: 'up' | 'down' | 'stable';
+  change: string;
+  lastUpdated: string;
+}

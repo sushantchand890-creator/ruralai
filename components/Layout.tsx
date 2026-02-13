@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Sprout, MessageCircle, Calendar, Cloud, FileText, Menu, X, BarChart3, FlaskConical, TrendingUp, UserCircle, LogOut, ChevronRight, Droplets } from 'lucide-react';
+import { Sprout, MessageCircle, Calendar, Cloud, FileText, Menu, X, BarChart3, FlaskConical, TrendingUp, UserCircle, LogOut, ChevronRight, Droplets, Tag } from 'lucide-react';
 import { getTranslation, Language } from '../translations';
 import { useUser } from '../App';
 import { LanguageToggle } from './LanguageToggle';
@@ -27,6 +27,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogout }) => {
   const navigation = [
     { name: t.dashboard, path: '/', icon: Sprout },
     { name: t.aiAssistant, path: '/chat', icon: MessageCircle },
+    { name: t.marketHub, path: '/market', icon: Tag },
     { name: t.irrigationAdvisor, path: '/irrigation', icon: Droplets },
     { name: t.cropPlanner, path: '/planner', icon: Calendar },
     { name: t.fertilizerAdvisor, path: '/fertilizer', icon: FlaskConical },

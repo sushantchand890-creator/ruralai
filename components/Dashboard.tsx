@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Cloud, Droplets, Thermometer, TrendingUp, AlertCircle, ArrowRight, Sparkles, Loader2, FlaskConical, Sprout, Camera, Waves, Newspaper, ShieldAlert, Users, ExternalLink, Calendar, MapPin, AlertTriangle } from 'lucide-react';
+import { Cloud, Droplets, Thermometer, TrendingUp, AlertCircle, ArrowRight, Sparkles, Loader2, FlaskConical, Sprout, Camera, Waves, Newspaper, ShieldAlert, Users, ExternalLink, Calendar, MapPin, AlertTriangle, Tag, TrendingDown, Minus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { geminiService } from '../services/geminiService';
 import { useUser } from '../App';
 import { getTranslation } from '../translations';
-import { FarmProfile, LocalNewsItem } from '../types';
+import { FarmProfile, LocalNewsItem, MarketPrice } from '../types';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -13,8 +13,10 @@ export const Dashboard: React.FC = () => {
   const [aiAlerts, setAiAlerts] = useState<any[]>([]);
   const [localNews, setLocalNews] = useState<LocalNewsItem[]>([]);
   const [weatherAlerts, setWeatherAlerts] = useState<any[]>([]);
+  const [marketSnapshot, setMarketSnapshot] = useState<MarketPrice[]>([]);
   const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
   const [isLoadingNews, setIsLoadingNews] = useState(false);
+  const [isLoadingMarket, setIsLoadingMarket] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [realStats, setRealStats] = useState({
     temp: '...',
@@ -29,6 +31,7 @@ export const Dashboard: React.FC = () => {
       fetchAlerts(user);
       fetchLiveWeatherForStats(user);
       fetchLocalIntelligence(user);
+      fetchMarketSnapshot(user);
     }
   }, [user?.language, user?.location]);
 
@@ -60,6 +63,19 @@ export const Dashboard: React.FC = () => {
       console.error("Local intelligence fetch failed", e);
     } finally {
       setIsLoadingNews(false);
+    }
+  };
+
+  const fetchMarketSnapshot = async (prof: FarmProfile) => {
+    setIsLoadingMarket(true);
+    try {
+      const crops = prof.primaryCrops.length ? prof.primaryCrops.slice(0, 3) : ['Wheat', 'Rice'];
+      const data = await geminiService.getMarketPrices(prof.location, crops, prof.language);
+      setMarketSnapshot(data.slice(0, 3));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingMarket(false);
     }
   };
 
@@ -130,22 +146,9 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Severe Weather Alert Ribbon */}
-      {weatherAlerts.some(a => a.severity === 'High') && (
-        <div className="bg-red-600 p-4 rounded-3xl text-white flex items-center justify-between shadow-2xl animate-pulse">
-           <div className="flex items-center gap-3">
-             <AlertTriangle className="w-6 h-6" />
-             <span className="font-black text-sm uppercase tracking-widest">{t.weatherAlerts}: {weatherAlerts.find(a => a.severity === 'High')?.title}</span>
-           </div>
-           <Link to="/weather" className="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-xl text-xs font-black transition-all">
-             View Details
-           </Link>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-[2rem] border border-gray-50 shadow-xl shadow-gray-100 hover:shadow-2xl transition-all hover:-translate-y-1">
+          <div key={i} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-100 hover:shadow-2xl transition-all hover:-translate-y-1">
             <div className={`w-12 h-12 ${stat.bg} rounded-2xl flex items-center justify-center mb-4`}>
               <stat.icon className={`w-6 h-6 ${stat.color}`} />
             </div>
@@ -157,135 +160,134 @@ export const Dashboard: React.FC = () => {
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
-            <div className="relative z-10">
-              <h2 className="text-2xl font-black mb-4 flex items-center gap-3">
-                <Sparkles className="w-7 h-7 text-yellow-300 fill-current" /> {t.aiFarmerInsights}
-              </h2>
-              {isLoadingAlerts ? (
-                <div className="flex items-center gap-3 py-6">
-                  <Loader2 className="w-6 h-6 animate-spin text-green-200" />
-                  <span className="font-bold text-green-100 tracking-wide">{t.observingSkies}</span>
-                </div>
-              ) : aiAlerts.length > 0 ? (
-                <div className="space-y-4 mt-6">
-                  {aiAlerts.map((alert, idx) => (
-                    <div key={idx} className="bg-white/10 backdrop-blur-xl p-5 rounded-3xl border border-white/20 animate-in slide-in-from-left duration-500">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${alert.urgency === 'High' ? 'bg-red-500/20 text-red-100 border-red-400/30' : 'bg-yellow-500/20 text-yellow-100 border-yellow-400/30'}`}>
-                          {alert.type} • {alert.urgency}
-                        </span>
+          {/* AI Insights & Market Section */}
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden flex flex-col justify-between">
+              <div className="relative z-10">
+                <h2 className="text-2xl font-black mb-4 flex items-center gap-3">
+                  <Sparkles className="w-7 h-7 text-yellow-300 fill-current" /> {t.aiFarmerInsights}
+                </h2>
+                {isLoadingAlerts ? (
+                  <div className="flex items-center gap-3 py-6">
+                    <Loader2 className="w-6 h-6 animate-spin text-green-200" />
+                    <span className="font-bold text-green-100 tracking-wide">{t.observingSkies}</span>
+                  </div>
+                ) : aiAlerts.length > 0 ? (
+                  <div className="space-y-4">
+                    {aiAlerts.slice(0, 1).map((alert, idx) => (
+                      <div key={idx} className="bg-white/10 backdrop-blur-xl p-5 rounded-3xl border border-white/20">
+                        <p className="font-black text-lg mb-1">{alert.title}</p>
+                        <p className="text-xs text-green-50 opacity-90">{alert.description}</p>
                       </div>
-                      <p className="font-black text-xl mb-1">{alert.title}</p>
-                      <p className="text-sm text-green-50 font-medium opacity-90">{alert.description}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-8 py-10 px-6 rounded-3xl bg-white/5 border border-white/10 text-center">
-                  <p className="text-green-50 font-bold">{t.fieldsPeaceful}</p>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-4 mt-10">
-                <Link to="/chat" className="inline-flex items-center gap-3 bg-white text-green-800 px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all shadow-2xl active:scale-95">
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-green-50 font-bold py-6">{t.fieldsPeaceful}</p>
+                )}
+              </div>
+              <div className="mt-8">
+                <Link to="/chat" className="inline-flex items-center gap-3 bg-white text-green-800 px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all shadow-xl active:scale-95">
                   {t.talkToKisanBhai} <ArrowRight className="w-5 h-5" />
                 </Link>
-                <Link to="/irrigation" className="inline-flex items-center gap-3 bg-blue-500 text-white px-8 py-4 rounded-2xl font-black hover:bg-blue-600 transition-all shadow-2xl active:scale-95">
-                  {t.irrigationAdvisor} <Waves className="w-5 h-5" />
-                </Link>
               </div>
+              <TrendingUp className="absolute -bottom-10 -right-10 w-48 h-48 text-white/10" />
             </div>
-            <TrendingUp className="absolute -bottom-10 -right-10 w-64 h-64 text-white/10" />
+
+            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl flex flex-col justify-between">
+               <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-black text-xl text-gray-900 flex items-center gap-2">
+                      <Tag className="w-6 h-6 text-indigo-600" /> {t.marketSnapshot}
+                    </h3>
+                  </div>
+                  {isLoadingMarket ? (
+                    <div className="flex items-center gap-3 py-8">
+                       <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                       <span className="text-sm font-bold text-gray-400">{t.loadingPrices}</span>
+                    </div>
+                  ) : marketSnapshot.length > 0 ? (
+                    <div className="space-y-4">
+                      {marketSnapshot.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                          <div>
+                            <p className="text-sm font-black text-gray-900 leading-none mb-1">{item.cropName}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{item.marketName}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-black text-green-600">{item.sellPrice}</p>
+                            <p className="text-[9px] text-gray-400 font-bold">per {item.unit}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 font-bold py-10 text-center">No recent price updates.</p>
+                  )}
+               </div>
+               <Link to="/market" className="w-full text-center py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-sm mt-6 hover:bg-indigo-100 transition-all">
+                  {t.viewMarketHub}
+               </Link>
+            </div>
           </div>
 
-          {/* New: Village Feed Section */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100 overflow-hidden relative">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl">
             <div className="flex items-center justify-between mb-8">
               <h3 className="font-black text-xl text-gray-900 flex items-center gap-3">
                 <Users className="w-6 h-6 text-indigo-600" /> {t.villageFeed}
               </h3>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Updates</p>
             </div>
             {isLoadingNews ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <div className="flex flex-col items-center py-12 gap-4">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
                 <p className="text-sm font-bold text-gray-400">{t.loadingNews}</p>
               </div>
             ) : localNews.length > 0 ? (
               <div className="grid gap-6">
-                {localNews.map((item, idx) => (
-                  <div key={idx} className="group bg-gray-50/50 hover:bg-white hover:shadow-xl hover:border-indigo-100 p-5 rounded-3xl border border-transparent transition-all animate-in fade-in slide-in-from-bottom-2">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-2">
-                        {item.type === 'incident' ? (
-                          <div className="p-2 bg-red-100 text-red-600 rounded-xl"><ShieldAlert className="w-4 h-4" /></div>
-                        ) : (
-                          <div className="p-2 bg-blue-100 text-blue-600 rounded-xl"><Newspaper className="w-4 h-4" /></div>
-                        )}
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none mb-1">
-                            {item.type === 'incident' ? t.incident : t.news} • {item.date || 'Today'}
-                          </p>
-                          <h4 className="font-black text-gray-900 group-hover:text-indigo-600 transition-colors">{item.title}</h4>
-                        </div>
-                      </div>
-                      {item.url && (
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white rounded-xl shadow-sm hover:text-indigo-600 transition-colors">
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
+                {localNews.slice(0, 3).map((item, idx) => (
+                  <div key={idx} className="p-5 bg-gray-50/50 rounded-3xl border border-transparent hover:border-indigo-100 transition-all">
+                    <div className="flex items-center gap-2 mb-2">
+                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none">
+                          {item.type || t.news} • {item.date || 'Today'}
+                       </p>
                     </div>
-                    <p className="text-sm text-gray-600 font-medium leading-relaxed mb-3">{item.summary}</p>
-                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase">
-                      <MapPin className="w-3 h-3" /> {user?.location} • <span className="text-indigo-600">{item.source || t.communityReported}</span>
-                    </div>
+                    <h4 className="font-black text-gray-900 mb-1">{item.title}</h4>
+                    <p className="text-sm text-gray-600 font-medium line-clamp-2">{item.summary}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                <p className="text-gray-400 font-bold">No recent community incidents reported in this area.</p>
-              </div>
+              <p className="text-gray-400 font-bold text-center py-10">No recent community updates.</p>
             )}
           </div>
         </div>
 
         <div className="space-y-8">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl">
             <h3 className="font-black text-xl text-gray-900 mb-6 flex items-center gap-2">
               <AlertCircle className="w-6 h-6 text-red-500" /> {t.riskMonitor}
             </h3>
             <div className="space-y-4">
               {weatherAlerts.slice(0, 2).map((alert, i) => (
-                <div key={i} className={`p-5 rounded-3xl border shadow-sm ${alert.severity === 'High' ? 'bg-red-50 border-red-100 text-red-900' : 'bg-orange-50 border-orange-100 text-orange-900'}`}>
-                  <p className="text-[10px] font-black uppercase tracking-widest mb-1">{alert.severity} Weather Priority</p>
-                  <p className="text-sm font-bold leading-tight">{alert.title}</p>
-                  <p className="text-[10px] mt-2 opacity-70">{alert.action}</p>
+                <div key={i} className="p-5 bg-red-50 rounded-3xl border border-red-100">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-1">Weather Priority</p>
+                  <p className="text-sm font-bold text-red-900 leading-tight">{alert.title}</p>
                 </div>
               ))}
-              {weatherAlerts.length === 0 && (
-                <>
-                  <div className="p-5 bg-red-50 rounded-3xl border border-red-100 shadow-sm shadow-red-50">
-                    <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">{t.localPestWarning}</p>
-                    <p className="text-sm text-red-900 font-bold leading-tight">{t.locustDesc}</p>
-                  </div>
-                  <div className="p-5 bg-orange-50 rounded-3xl border border-orange-100 shadow-sm shadow-orange-50">
-                    <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">{t.irrigationSchedule}</p>
-                    <p className="text-sm text-orange-900 font-bold leading-tight">{t.soilMoistureLowDesc}</p>
-                  </div>
-                </>
-              )}
+              <div className="p-5 bg-orange-50 rounded-3xl border border-orange-100">
+                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">{t.localPestWarning}</p>
+                <p className="text-sm text-orange-900 font-bold leading-tight">{t.locustDesc}</p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl">
             <h3 className="font-black text-xl text-gray-900 mb-6">{t.quickActions}</h3>
             <div className="grid grid-cols-2 gap-4">
-              <Link to="/fertilizer" className="p-6 bg-indigo-50/50 rounded-3xl text-center hover:bg-indigo-100/50 transition-all border border-indigo-100/50 group">
-                <FlaskConical className="w-8 h-8 text-indigo-500 mx-auto mb-3 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-black text-gray-600 uppercase tracking-tight">{t.fertilizerAdvisor}</span>
+              <Link to="/market" className="p-6 bg-indigo-50/50 rounded-3xl text-center hover:bg-indigo-100 transition-all group">
+                <Tag className="w-8 h-8 text-indigo-500 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-black text-gray-600 uppercase tracking-tight">{t.marketHub}</span>
               </Link>
-              <Link to="/irrigation" className="p-6 bg-blue-50/50 rounded-3xl text-center hover:bg-blue-100/50 transition-all border border-blue-100/50 group">
+              <Link to="/irrigation" className="p-6 bg-blue-50/50 rounded-3xl text-center hover:bg-blue-100 transition-all group">
                 <Droplets className="w-8 h-8 text-blue-500 mx-auto mb-3 group-hover:scale-110 transition-transform" />
                 <span className="text-xs font-black text-gray-600 uppercase tracking-tight">{t.irrigationAdvisor}</span>
               </Link>

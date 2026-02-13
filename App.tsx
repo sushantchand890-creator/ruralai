@@ -12,6 +12,7 @@ import { Profile } from './components/Profile';
 import { FertilizerAdvisor } from './components/FertilizerAdvisor';
 import { IrrigationAdvisor } from './components/IrrigationAdvisor';
 import { GrowthTracker } from './components/GrowthTracker';
+import { MarketHub } from './components/MarketHub';
 import { Auth } from './components/Auth';
 import { FarmProfile } from './types';
 
@@ -59,6 +60,7 @@ const App: React.FC = () => {
             <Route path="/" element={<Layout onLogout={() => updateUser(null)} />}>
               <Route index element={<Dashboard />} />
               <Route path="chat" element={<Chat />} />
+              <Route path="market" element={<MarketHub />} />
               <Route path="planner" element={<CropPlanner />} />
               <Route path="profit" element={<ProfitSimulator />} />
               <Route path="weather" element={<Weather />} />

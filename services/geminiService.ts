@@ -1,11 +1,11 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { ChatMessage, FarmProfile, FertilizerAdvice, LocalNewsItem } from "../types";
+import { ChatMessage, FarmProfile, FertilizerAdvice, LocalNewsItem, MarketPrice } from "../types";
 
 const CACHE_PREFIX = 'ruralassist_cache_';
-const WEATHER_CACHE_TIME = 15 * 60 * 1000; // 15 mins
-const ALERTS_CACHE_TIME = 30 * 60 * 1000; // 30 mins
-const NEWS_CACHE_TIME = 60 * 60 * 1000; // 1 hour
+const WEATHER_CACHE_TIME = 15 * 60 * 1000;
+const NEWS_CACHE_TIME = 60 * 60 * 1000;
+const MARKET_CACHE_TIME = 30 * 60 * 1000; // 30 mins
 
 export class GeminiService {
   private getAI() {
@@ -41,23 +41,56 @@ export class GeminiService {
     return `The user's preferred language is ${maps[lang] || 'English'}. Please respond in that language.`;
   }
 
+  async getMarketPrices(location: string, crops: string[], lang: string = 'en'): Promise<MarketPrice[]> {
+    const cacheKey = `market_${location}_${crops.join('_')}_${lang}`;
+    const cached = this.getCached<MarketPrice[]>(cacheKey);
+    if (cached) return cached;
+
+    const ai = this.getAI();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Find current market buy (input/seed) and sell (mandi) prices for ${crops.join(', ')} in or near ${location}. Focus on today's latest data. Provide prices per Quintal or Kg as applicable. Respond in ${lang} and return a JSON array.`,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              cropName: { type: Type.STRING },
+              buyPrice: { type: Type.STRING, description: "Market price for purchasing seeds/inputs" },
+              sellPrice: { type: Type.STRING, description: "Current Mandi selling price for farmers" },
+              unit: { type: Type.STRING },
+              marketName: { type: Type.STRING },
+              trend: { type: Type.STRING, description: "'up', 'down', or 'stable'" },
+              change: { type: Type.STRING },
+              lastUpdated: { type: Type.STRING }
+            },
+            required: ["cropName", "buyPrice", "sellPrice", "unit"]
+          }
+        }
+      }
+    });
+
+    const text = (response.text || '[]').trim();
+    const jsonStr = text.startsWith('```') ? text.replace(/^```json\n?/, '').replace(/\n?```$/, '') : text;
+    const data = JSON.parse(jsonStr);
+    this.setCache(cacheKey, data, MARKET_CACHE_TIME);
+    return data;
+  }
+
   async generateSpeech(text: string, lang: string = 'en') {
     const ai = this.getAI();
     const voiceName = lang === 'hi' || lang === 'pa' || lang === 'mr' ? 'Kore' : 'Puck';
-
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `Say in ${lang}: ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName },
-          },
-        },
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
       },
     });
-
     return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   }
 
@@ -67,26 +100,18 @@ export class GeminiService {
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: msg.content }]
     }));
-
     const currentParts: any[] = [];
     if (message.trim()) currentParts.push({ text: message });
     if (imageBase64) {
-      currentParts.push({
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: imageBase64.split(',')[1] || imageBase64
-        }
-      });
+      currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64.split(',')[1] || imageBase64 } });
     }
-
     contents.push({ role: 'user', parts: currentParts });
-
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents,
       config: {
         systemInstruction: `You are Kisan-Bhai, the friendly AI Farmer advisor. ${this.getLanguageContext(lang)} 
-        Help with diseases, irrigation, and crop planning.`,
+        Help with diseases, irrigation, market prices, and crop planning.`,
       }
     });
     return response.text || "I'm sorry, I'm resting my voice right now.";
@@ -123,7 +148,6 @@ export class GeminiService {
     const cacheKey = `weather_${location}_${lang}`;
     const cached = this.getCached(cacheKey);
     if (cached) return cached;
-
     const ai = this.getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -171,11 +195,10 @@ export class GeminiService {
     const cacheKey = `local_news_${location}_${lang}`;
     const cached = this.getCached<LocalNewsItem[]>(cacheKey);
     if (cached) return cached;
-
     const ai = this.getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Search for the latest farming news, local agricultural incidents, market arrivals, crop thefts, or pest reports in or near ${location}. Focus on news from the last 30 days. Respond in ${lang} and return as a JSON array.`,
+      contents: `Search for the latest farming news, local agricultural incidents, or pest reports near ${location}. Respond in ${lang} and return as a JSON array.`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: 'application/json',
@@ -189,14 +212,12 @@ export class GeminiService {
               source: { type: Type.STRING },
               url: { type: Type.STRING },
               date: { type: Type.STRING },
-              type: { type: Type.STRING, description: "Must be 'news', 'incident', or 'alert'" }
-            },
-            required: ["title", "summary"]
+              type: { type: Type.STRING }
+            }
           }
         }
       }
     });
-
     const text = (response.text || '[]').trim();
     const jsonStr = text.startsWith('```') ? text.replace(/^```json\n?/, '').replace(/\n?```$/, '') : text;
     const data = JSON.parse(jsonStr);
@@ -205,10 +226,6 @@ export class GeminiService {
   }
 
   async getProactiveAlerts(profile: FarmProfile) {
-    const cacheKey = `alerts_${profile.location}_${profile.language}`;
-    const cached = this.getCached(cacheKey);
-    if (cached) return cached;
-
     const ai = this.getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -234,9 +251,7 @@ export class GeminiService {
         }
       }
     });
-    const data = JSON.parse(response.text || '{"alerts": []}').alerts;
-    this.setCache(cacheKey, data, ALERTS_CACHE_TIME);
-    return data;
+    return JSON.parse(response.text || '{"alerts": []}').alerts;
   }
 
   async getFertilizerAdvice(crop: string, soil: string, stage: string, lang: string = 'en'): Promise<FertilizerAdvice> {
@@ -297,8 +312,7 @@ export class GeminiService {
             intensity: { type: Type.STRING },
             timing: { type: Type.STRING },
             recommendation: { type: Type.STRING }
-          },
-          required: ["isRainExpected"]
+          }
         }
       }
     });
@@ -308,10 +322,6 @@ export class GeminiService {
   }
 
   async getWeatherAlerts(location: string, lang: string = 'en') {
-    const cacheKey = `weather_alerts_${location}`;
-    const cached = this.getCached(cacheKey);
-    if (cached) return cached;
-
     const ai = this.getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -340,9 +350,7 @@ export class GeminiService {
     });
     const text = (response.text || '{"alerts": []}').trim();
     const jsonStr = text.startsWith('```') ? text.replace(/^```json\n?/, '').replace(/\n?```$/, '') : text;
-    const data = JSON.parse(jsonStr).alerts;
-    this.setCache(cacheKey, data, WEATHER_CACHE_TIME);
-    return data;
+    return JSON.parse(jsonStr).alerts;
   }
 
   async analyzeGrowth(imageBase64: string, cropType: string, lang: string = 'en') {
@@ -372,10 +380,6 @@ export class GeminiService {
   }
 
   async getSchemes(lang: string = 'en') {
-    const cacheKey = `schemes_${lang}`;
-    const cached = this.getCached(cacheKey);
-    if (cached) return cached;
-
     const ai = this.getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -405,9 +409,7 @@ export class GeminiService {
     });
     const text = (response.text || '{"schemes": []}').trim();
     const jsonStr = text.startsWith('```') ? text.replace(/^```json\n?/, '').replace(/\n?```$/, '') : text;
-    const data = JSON.parse(jsonStr).schemes;
-    this.setCache(cacheKey, data, 24 * 60 * 60 * 1000); // 1 day
-    return data;
+    return JSON.parse(jsonStr).schemes;
   }
 
   async getCropRecommendations(location: string, season: string, soil: string, lang: string = 'en') {
